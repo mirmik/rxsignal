@@ -73,8 +73,8 @@ class feedback_subject(subject):
         self.q.put(val)
 
 
-def interval(d):
+def rxinterval(d):
     return observable(reactivex.interval(d))
 
-def range(s,f):
+def rxrange(s,f):
     return observable(reactivex.range(s,f))
