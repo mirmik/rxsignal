@@ -23,7 +23,12 @@ class observable:
         if isinstance(arg, observable):
             z = self.zip(arg)
             return z.map(lambda x: p(x[0], x[1]))
+        return self.map(lambda x: p(x, arg))
 
+    def rop(self, p, arg):
+        if isinstance(arg, observable):
+            z = self.zip(arg)
+            return z.map(lambda x: p(x[1], x[0]))
         return self.map(lambda x: p(x, arg))
 
     def add(self, arg):
@@ -34,6 +39,16 @@ class observable:
         return self.op(operator.mul, arg)
     def div(self, arg):
         return self.op(operator.truediv, arg)
+
+    def radd(self, arg):
+        return self.rop(operator.add, arg)
+    def rsub(self, arg):
+        return self.rop(operator.sub, arg)
+    def rmul(self, arg):
+        return self.rop(operator.mul, arg)
+    def rdiv(self, arg):
+        return self.rop(operator.truediv, arg)
+
     def sin(self):
         return self.map(lambda x: math.sin(x))
     def cos(self):
@@ -47,6 +62,18 @@ class observable:
         return self.mul(oth)
     def __truediv__(self, oth):
         return self.div(oth)
+
+    def __radd__(self, oth):
+        return self.radd(oth)
+    def __rsub__(self, oth):
+        return self.rsub(oth)
+    def __rmul__(self, oth):
+        return self.rmul(oth)
+    def __rtruediv__(self, oth):
+        return self.rdiv(oth)
+
+    def to_list(self, count):
+        return self.o.range(0, count).to_list()
 
 class subject(observable):
     def __init__(self, subject=None):
