@@ -2,6 +2,7 @@ import reactivex
 import queue
 import threading
 import operator
+import numpy
 
 class observable:
     def __init__(self, o):
@@ -40,6 +41,9 @@ class observable:
     def div(self, arg):
         return self.op(operator.truediv, arg)
 
+    def norm(self):
+        return self.map(lambda x: numpy.linalg.norm(x))
+
     def radd(self, arg):
         return self.rop(operator.add, arg)
     def rsub(self, arg):
@@ -71,6 +75,9 @@ class observable:
         return self.rmul(oth)
     def __rtruediv__(self, oth):
         return self.rdiv(oth)
+
+    def __getitem__(self, idx):
+        return self.map(lambda x: x[idx])
 
     def to_list(self, count):
         return self.o.range(0, count).to_list()
@@ -105,3 +112,6 @@ def rxinterval(d):
 
 def rxrange(s,f):
     return observable(reactivex.range(s,f))
+
+def zip(*x):
+    return observable(reactivex.zip(*[a.o for a in x]))
