@@ -3,31 +3,32 @@ import queue
 import threading
 import operator
 import numpy
+import math
 
-class observable:
+class Observable:
     def __init__(self, o):
         self.o = o
 
     def map(self, foo):
-        return observable(self.o.pipe(reactivex.operators.map(foo)))
+        return Observable(self.o.pipe(reactivex.operators.map(foo)))
 
     def zip(self, oth):
-        return observable(reactivex.zip(self.o, oth.o))        
+        return Observable(reactivex.zip(self.o, oth.o))        
 
     def subscribe(self, *args, **kwargs):
         self.o.subscribe(*args, **kwargs)
 
     def take(self, count):
-        return observable(self.o.pipe(ops.take(count)))
+        return Observable(self.o.pipe(ops.take(count)))
 
     def op(self, p, arg):
-        if isinstance(arg, observable):
+        if isinstance(arg, Observable):
             z = self.zip(arg)
             return z.map(lambda x: p(x[0], x[1]))
         return self.map(lambda x: p(x, arg))
 
     def rop(self, p, arg):
-        if isinstance(arg, observable):
+        if isinstance(arg, Observable):
             z = self.zip(arg)
             return z.map(lambda x: p(x[1], x[0]))
         return self.map(lambda x: p(x, arg))
@@ -82,7 +83,7 @@ class observable:
     def to_list(self, count):
         return self.o.range(0, count).to_list()
 
-class subject(observable):
+class subject(Observable):
     def __init__(self, subject=None):
         if subject is None:
             subject = reactivex.subject.Subject()
@@ -108,10 +109,10 @@ class feedback_subject(subject):
 
 
 def rxinterval(d):
-    return observable(reactivex.interval(d))
+    return Observable(reactivex.interval(d))
 
 def rxrange(s,f):
-    return observable(reactivex.range(s,f))
+    return Observable(reactivex.range(s,f))
 
 def zip(*x):
-    return observable(reactivex.zip(*[a.o for a in x]))
+    return Observable(reactivex.zip(*[a.o for a in x]))
