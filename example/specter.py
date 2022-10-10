@@ -16,16 +16,9 @@ s = t.map(lambda x: math.sin(x*(200))*random.random()
 
 wind = s.buffer_with_count(256)
 
-
-def rfftfreq(x):
-    import numpy
-    ret = numpy.fft.rfftfreq(len(x), d=delta)
-    return ret
-
-
 specter = (wind.map(numpy.fft.rfft)
            .map(lambda x: x.real**2 + x.imag**2))
+
 freqs = wind.map(lambda x: numpy.fft.rfftfreq(len(x), d=delta))
 
 rxsignal.chart.windowplot_application(freqs, specter)
-#rxsignal.flowchart.flowplot_application(t.sample(0.01), s.sample(0.01))
