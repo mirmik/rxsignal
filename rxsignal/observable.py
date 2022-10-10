@@ -23,13 +23,11 @@ class Observable:
         """Hook for infinite generators such as rxconstant"""
         return self.collection()
 
-    def zip(self, oth):
-        return Observable(reactivex.zip(
-            self.collection_zipped_with(oth),
-            oth.collection_zipped_with(self)))
+    def zip(*args):
+        return Observable(reactivex.zip(*[a.collection_zipped_with(a) for a in args]))
 
     def subscribe(self, *args, **kwargs):
-        self.collection().subscribe(*args, **kwargs)
+        return self.collection().subscribe(*args, **kwargs)
 
     def take(self, count):
         return Observable(self.collection().pipe(ops.take(count)))
@@ -122,6 +120,28 @@ class Subject(Observable):
     def on_next(self, val):
         self.o.on_next(val)
 
+    def on_complete(self):
+        self.o.on_completed()
+
+
+class Commutator(Subject):
+    def __init__(self, observer=None):
+        super().__init__()
+        if observer is None:
+            self.subscription = None
+        else:
+            self.bind(observer)
+
+    def bind(self, observer):
+        self.subscription = observer.subscribe(lambda x: self.on_next(x))
+
+    def unbind(self):
+        self.subscription.dispose()
+
+    def rebind(self, observer):
+        self.unbind()
+        self.bind(observer)
+
 
 class FeedbackSubject(Subject):
     def __init__(self, init=0):
@@ -156,7 +176,6 @@ def rxconstant(x):
             self.collections = []
 
         def collection_zipped_with(self, oth):
-            print("collection_zipped_with", self, oth)
             collection = reactivex.operators.map(lambda _: self.x)(
                 oth.collection())
             self.collections.append(collection)
@@ -175,4 +194,20 @@ def rxrange(s, f):
 
 
 def zip(*x):
-    return Observable(reactivex.zip(*[a.o for a in x]))
+    collections = []
+
+    # first observable
+    first_obsevable = None
+    for a in x:
+        if isinstance(a, Observable):
+            first_obsevable = a
+            break
+
+    for a in x:
+        if isinstance(a, Observable):
+            collections.append(a.collection())
+        else:
+            constant = rxconstant(a)
+            collections.append(constant.collection_zipped_with(first_obsevable))
+
+    return Observable(reactivex.zip(*collections))

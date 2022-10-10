@@ -35,18 +35,22 @@ class mqtt_rxclient:
         return client
 
     def on_message(self, client, userdata, msg):
-        self.handlers[msg.topic](msg.payload.decode())
+        for handler in self.handlers[msg.topic]:
+            handler(msg.payload.decode())
 
     def subscribe(self, topic, func):
         self.client.subscribe(topic)
-        self.handlers[topic] = func
+        if topic in self.handlers:
+            self.handlers[topic].append(func)
+        else:
+            self.handlers[topic] = [func]
 
     def publish(self, theme, msg):
         self.client.publish(theme, msg)
 
     def rxsubscribe(self, theme):
         # it must be a PublishSubject. But library does not have it.
-        s = reactivex.subject.ReplaySubject()
+        s = reactivex.subject.Subject()
         self.subscribe(theme, lambda x: s.on_next(x))
         return Subject(s)
 
