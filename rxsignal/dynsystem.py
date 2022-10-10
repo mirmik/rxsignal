@@ -1,5 +1,5 @@
 import numpy
-from rxsignal.observable import feedback_subject
+from rxsignal.observable import FeedbackSubject
 from scipy import linalg
 import numpy as np
 
@@ -39,7 +39,7 @@ class DynamicSystem:
         if init is None:
             init = numpy.zeros(len(B))
 
-        x0 = feedback_subject()
+        x0 = FeedbackSubject()
         x1 = x0.map(lambda a: numpy.matmul(Ad, a)) + g.map(lambda g: Bd*g)
         x1.subscribe(lambda a: x0.on_next(a))
         x0.on_next(init)
@@ -49,7 +49,7 @@ class DynamicSystem:
         if init is None:
             init = numpy.zeros(len(B))
 
-        x0 = feedback_subject()
+        x0 = FeedbackSubject()
         x1 = numpy.matmul(Ad, x0) + numpy.matmul(Bd, g)
         y1 = numpy.matmul(Cd, x0) + numpy.matmul(Dd, g)
         x1.subscribe(lambda a: x0.on_next(a))

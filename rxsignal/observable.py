@@ -1,4 +1,7 @@
+import re
 import reactivex
+import reactivex.operators
+import reactivex.operators as ops
 import queue
 import threading
 import operator
@@ -10,17 +13,26 @@ class Observable:
     def __init__(self, o):
         self.o = o
 
+    def collection(self):
+        return self.o
+
     def map(self, foo):
-        return Observable(self.o.pipe(reactivex.operators.map(foo)))
+        return Observable(self.collection().pipe(reactivex.operators.map(foo)))
+
+    def collection_zipped_with(self, oth):
+        """Hook for infinite generators such as rxconstant"""
+        return self.collection()
 
     def zip(self, oth):
-        return Observable(reactivex.zip(self.o, oth.o))
+        return Observable(reactivex.zip(
+            self.collection_zipped_with(oth),
+            oth.collection_zipped_with(self)))
 
     def subscribe(self, *args, **kwargs):
-        self.o.subscribe(*args, **kwargs)
+        self.collection().subscribe(*args, **kwargs)
 
     def take(self, count):
-        return Observable(self.o.pipe(ops.take(count)))
+        return Observable(self.collection().pipe(ops.take(count)))
 
     def op(self, p, arg):
         if isinstance(arg, Observable):
@@ -91,6 +103,9 @@ class Observable:
     def __rtruediv__(self, oth):
         return self.rdiv(oth)
 
+    def __neg__(self):
+        return self.map(lambda x: -x)
+
     def __getitem__(self, idx):
         return self.map(lambda x: x[idx])
 
@@ -98,7 +113,7 @@ class Observable:
         return self.o.range(0, count).to_list()
 
 
-class subject(Observable):
+class Subject(Observable):
     def __init__(self, subject=None):
         if subject is None:
             subject = reactivex.subject.Subject()
@@ -108,8 +123,9 @@ class subject(Observable):
         self.o.on_next(val)
 
 
-class feedback_subject(subject):
-    def __init__(self):
+class FeedbackSubject(Subject):
+    def __init__(self, init=0):
+        self.init = init
         super().__init__(subject=reactivex.subject.ReplaySubject())
         self.q = queue.Queue()
         self.thr = threading.Thread(target=self.foo)
@@ -123,9 +139,35 @@ class feedback_subject(subject):
     def on_next(self, val):
         self.q.put(val)
 
+    def loop(self, newstate):
+        newstate.subscribe(lambda x: self.on_next(x))
+        self.on_next(self.init)
+        return self
+
 
 def rxinterval(d):
     return Observable(reactivex.interval(d))
+
+
+def rxconstant(x):
+    class RxConstantObservable(Observable):
+        def __init__(self, x):
+            self.x = x
+            self.collections = []
+
+        def collection_zipped_with(self, oth):
+            print("collection_zipped_with", self, oth)
+            collection = reactivex.operators.map(lambda _: self.x)(
+                oth.collection())
+            self.collections.append(collection)
+            return collection
+
+        def subscribe(self, *args, **kwargs):
+            collection = reactivex.repeat_value(self.x)
+            self.collections.append(collection)
+            collection.subscribe(*args, **kwargs)
+
+    return RxConstantObservable(x)
 
 
 def rxrange(s, f):
