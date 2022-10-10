@@ -22,6 +22,9 @@ class mqtt_rxclient:
         thr.start()
         self.loop_thread = thr
 
+    def stop_spin(self):
+        self.client.loop_stop()
+
     def connect_mqtt(self, ip, port):
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
