@@ -14,6 +14,7 @@ class mqtt_rxclient:
         self.client = self.connect_mqtt(ip, port)
         self.client.on_message = self.on_message
         self.handlers = {}
+        self.all_subjects = []
         if client_id is None:
             client_id = f'client_{time.time()}'
 
@@ -23,7 +24,15 @@ class mqtt_rxclient:
         self.loop_thread = thr
 
     def stop_spin(self):
+        for s in self.all_subjects:
+            s.on_completed()
+
         self.client.loop_stop()
+        self.client.disconnect()
+        try:
+            self.loop_thread.join()
+        except Exception as e:
+            pass
 
     def connect_mqtt(self, ip, port):
         def on_connect(client, userdata, flags, rc):
@@ -55,6 +64,7 @@ class mqtt_rxclient:
         # it must be a PublishSubject. But library does not have it.
         s = reactivex.subject.Subject()
         self.subscribe(theme, lambda x: s.on_next(x))
+        self.all_subjects.append(s)
         return Subject(s)
 
     def rxpublish(self, theme, collection):

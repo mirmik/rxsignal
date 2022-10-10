@@ -42,7 +42,7 @@ class Observable:
         if isinstance(arg, Observable):
             z = self.zip(arg)
             return z.map(lambda x: p(x[1], x[0]))
-        return self.map(lambda x: p(x, arg))
+        return self.map(lambda x: p(arg, x))
 
     def add(self, arg):
         return self.op(operator.add, arg)
@@ -107,8 +107,17 @@ class Observable:
     def __getitem__(self, idx):
         return self.map(lambda x: x[idx])
 
-    def to_list(self, count):
-        return self.o.range(0, count).to_list()
+    def to_list(self, count=None):
+        if count is None:
+            return self.collection().pipe(ops.to_list()).run()
+        else:
+            return self.o.range(0, count).to_list()
+
+    def buffer_with_count(self, count):
+        return Observable(self.collection().pipe(ops.buffer_with_count(count)))
+
+    def sample(self, interval):
+        return Observable(self.collection().pipe(ops.sample(interval)))
 
 
 class Subject(Observable):
@@ -120,7 +129,7 @@ class Subject(Observable):
     def on_next(self, val):
         self.o.on_next(val)
 
-    def on_complete(self):
+    def on_completed(self):
         self.o.on_completed()
 
 
@@ -144,49 +153,71 @@ class Commutator(Subject):
 
 
 class FeedbackSubject(Subject):
-    def __init__(self, init=0):
+    def __init__(self, init=0, use_thread=False, subject=None):
         self.init = init
-        super().__init__(subject=reactivex.subject.ReplaySubject())
-        self.q = queue.Queue()
-        self.thr = threading.Thread(target=self.foo)
-        self.thr.start()
+        if subject is None:
+            subject = reactivex.subject.ReplaySubject()
+        super().__init__(subject=subject)
+        self.use_thread = use_thread
+
+        if self.use_thread:
+            self.cancel = False
+            self.q = queue.Queue()
+            self.thr = threading.Thread(target=self.foo)
+            self.thr.start()
 
     def foo(self):
         while True:
             val = self.q.get()
+            if self.cancel:
+                return
             super().on_next(val)
 
     def on_next(self, val):
-        self.q.put(val)
+        if self.use_thread:
+            self.q.put(val)
+        else:
+            super().on_next(val)
 
     def loop(self, newstate):
-        newstate.subscribe(lambda x: self.on_next(x))
+        self.subscription = newstate.subscribe(lambda x: self.on_next(x))
         self.on_next(self.init)
         return self
+
+    def on_completed(self):
+        self.subscription.dispose()
+        if self.use_thread:
+            self.cancel = True
+            self.q.put(None)
+            self.thr.join()
+        return super().on_completed()
 
 
 def rxinterval(d):
     return Observable(reactivex.interval(d))
 
 
-def rxconstant(x):
-    class RxConstantObservable(Observable):
-        def __init__(self, x):
-            self.x = x
-            self.collections = []
+def rxconstant(x, trigger=None):
+    if trigger is None:
+        class RxConstantObservable(Observable):
+            def __init__(self, x):
+                self.x = x
+                self.collections = []
 
-        def collection_zipped_with(self, oth):
-            collection = reactivex.operators.map(lambda _: self.x)(
-                oth.collection())
-            self.collections.append(collection)
-            return collection
+            def collection_zipped_with(self, oth):
+                collection = reactivex.operators.map(lambda _: self.x)(
+                    oth.collection())
+                self.collections.append(collection)
+                return collection
 
-        def subscribe(self, *args, **kwargs):
-            collection = reactivex.repeat_value(self.x)
-            self.collections.append(collection)
-            collection.subscribe(*args, **kwargs)
+            def subscribe(self, *args, **kwargs):
+                collection = reactivex.repeat_value(self.x)
+                self.collections.append(collection)
+                collection.subscribe(*args, **kwargs)
 
-    return RxConstantObservable(x)
+        return RxConstantObservable(x)
+    else:
+        return trigger.map(lambda _: x)
 
 
 def rxrange(s, f):
@@ -211,3 +242,7 @@ def zip(*x):
             collections.append(constant.collection_zipped_with(first_obsevable))
 
     return Observable(reactivex.zip(*collections))
+
+
+def from_iterable(x):
+    return Observable(reactivex.from_iterable(x))
