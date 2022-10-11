@@ -14,7 +14,7 @@ import rxsignal
 
 
 class FlowSeries:
-    def __init__(self, maxinterval, maxpoints=5000, type=QLineSeries):
+    def __init__(self, maxinterval=None, maxpoints=None, type=QLineSeries):
         self.maxpoints = maxpoints
         self.maxinterval = maxinterval
 
@@ -38,11 +38,11 @@ class FlowSeries:
 
         self.data.append(point)
 
-        if self.maxinterval != -1:
-            while len(self.data) > self.maxpoints or self.data[-1].x() - self.data[0].x() > self.maxinterval:
+        if self.maxinterval is not None:
+            while self.data[-1].x() - self.data[0].x() > self.maxinterval:
                 del self.data[0]
 
-        else:
+        if self.maxpoints is not None:
             while len(self.data) > self.maxpoints:
                 del self.data[0]
 
@@ -61,11 +61,11 @@ class FlowSeries:
         if point.y() > self.ymax:
             self.ymax = point.y()
 
-        if self.maxinterval != -1:
-            while len(self.data) > self.maxpoints or self.data[-1].x() - self.data[0].x() > self.maxinterval:
+        if self.maxinterval is not None:
+            while self.data[-1].x() - self.data[0].x() > self.maxinterval:
                 del self.data[0]
 
-        else:
+        if self.maxpoints is not None:
             while len(self.data) > self.maxpoints:
                 del self.data[0]
 
@@ -112,7 +112,7 @@ class FlowChart(QChart):
         self.setAxisX(self.axisX)
         self.setAxisY(self.axisY)
 
-    def add_xyseries(self, maxinterval, maxpoints=5000, type=QLineSeries):
+    def add_xyseries(self, maxinterval, maxpoints=None, type=QLineSeries):
         series = FlowSeries(
             maxinterval=maxinterval, maxpoints=maxpoints, type=type)
         self.addSeries(series.series)
@@ -153,7 +153,8 @@ class FlowChart(QChart):
 
 def create_flowchart(xobservable,
                      *yobservable,
-                     interval=10,
+                     interval=None,
+                     maxpoints=None,
                      autoscale=True,
                      yrange=(-1, 1)):
     yobservable2 = []
@@ -177,7 +178,8 @@ def create_flowchart(xobservable,
 
     chart = FlowChart(yautoscale=autoscale)
     for y in yobservable:
-        serieses.append(chart.add_xyseries(maxinterval=interval))
+        serieses.append(chart.add_xyseries(maxinterval=interval,
+                                           maxpoints=maxpoints))
     view = QChartView(chart)
     chart.set_yrange(*yrange)
 

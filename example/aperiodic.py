@@ -9,6 +9,6 @@ g = rxconstant(1, trigger=t)
 
 x = FeedbackSubject(0)
 y = x + (g - x) * delta
-x.loop(y)
+x.bind(y)
 
 rxsignal.flowchart.flowplot_application(t, x)

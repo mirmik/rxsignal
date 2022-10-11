@@ -19,6 +19,10 @@ class Observable:
     def map(self, foo):
         return Observable(self.collection().pipe(reactivex.operators.map(foo)))
 
+    def tplmap(self, foo):
+        return Observable(self.collection().pipe(reactivex.operators.map(
+            lambda args: foo(*args))))
+
     def collection_zipped_with(self, oth):
         """Hook for infinite generators such as rxconstant"""
         return self.collection()
@@ -125,21 +129,13 @@ class Subject(Observable):
         if subject is None:
             subject = reactivex.subject.Subject()
         super().__init__(subject)
+        self.subscription = None
 
     def on_next(self, val):
         self.o.on_next(val)
 
     def on_completed(self):
         self.o.on_completed()
-
-
-class Commutator(Subject):
-    def __init__(self, observer=None):
-        super().__init__()
-        if observer is None:
-            self.subscription = None
-        else:
-            self.bind(observer)
 
     def bind(self, observer):
         self.subscription = observer.subscribe(lambda x: self.on_next(x))
@@ -150,6 +146,15 @@ class Commutator(Subject):
     def rebind(self, observer):
         self.unbind()
         self.bind(observer)
+
+
+class Commutator(Subject):
+    def __init__(self, observer=None):
+        super().__init__()
+        if observer is None:
+            self.subscription = None
+        else:
+            self.bind(observer)
 
 
 class FeedbackSubject(Subject):
@@ -166,6 +171,8 @@ class FeedbackSubject(Subject):
             self.thr = threading.Thread(target=self.foo)
             self.thr.start()
 
+        self.on_next(self.init)
+
     def foo(self):
         while True:
             val = self.q.get()
@@ -178,11 +185,6 @@ class FeedbackSubject(Subject):
             self.q.put(val)
         else:
             super().on_next(val)
-
-    def loop(self, newstate):
-        self.subscription = newstate.subscribe(lambda x: self.on_next(x))
-        self.on_next(self.init)
-        return self
 
     def on_completed(self):
         self.subscription.dispose()
@@ -244,5 +246,21 @@ def zip(*x):
     return Observable(reactivex.zip(*collections))
 
 
+def rxzip(*x):
+    return zip(*x)
+
+
 def from_iterable(x):
     return Observable(reactivex.from_iterable(x))
+
+
+def rxchoose(cond, t, f):
+    return cond.zip(t, f).tplmap(lambda c, t, f: t if c else f)
+
+
+def rxall(*conditions):
+    return rxzip(*conditions).tplmap(lambda *conds: all(conds))
+
+
+def rxany(*conditions):
+    return rxzip(*conditions).tplmap(lambda *conds: any(conds))
