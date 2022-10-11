@@ -254,8 +254,13 @@ def from_iterable(x):
     return Observable(reactivex.from_iterable(x))
 
 
-def rxchoose(cond, t, f):
-    return cond.zip(t, f).tplmap(lambda c, t, f: t if c else f)
+def rxchoose(cond, *signals):
+    if len(signals) == 1:
+        return signals[0]
+    elif len(signals) == 2:
+        return cond.zip(*signals).tplmap(lambda c, t, f: t if c else f)
+    else:
+        cond.zip(*signals).tplmap(lambda i, *s: s[i])
 
 
 def rxall(*conditions):
