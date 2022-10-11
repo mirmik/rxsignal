@@ -254,13 +254,12 @@ def from_iterable(x):
     return Observable(reactivex.from_iterable(x))
 
 
+def rxif(cond, t, f):
+    return cond.zip(t, f).tplmap(lambda c, t, f: t if c else f)
+
+
 def rxchoose(cond, *signals):
-    if len(signals) == 1:
-        return signals[0]
-    elif len(signals) == 2:
-        return cond.zip(*signals).tplmap(lambda c, t, f: t if c else f)
-    else:
-        cond.zip(*signals).tplmap(lambda i, *s: s[i])
+    return cond.zip(*signals).tplmap(lambda i, *s: s[i])
 
 
 def rxall(*conditions):
@@ -269,3 +268,17 @@ def rxall(*conditions):
 
 def rxany(*conditions):
     return rxzip(*conditions).tplmap(lambda *conds: any(conds))
+
+
+def internal_concat(arg):
+    class IConcatObservable(Subject):
+        def __init__(self, arg):
+            super().__init__()
+            self.arg = arg
+            self.arg.subscribe(self.add_buffer)
+
+        def add_buffer(self, val):
+            for v in val:
+                self.on_next(v)
+
+    return IConcatObservable(arg)

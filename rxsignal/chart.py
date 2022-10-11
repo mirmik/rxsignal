@@ -35,8 +35,14 @@ class WindowChart(QChart):
         self.setAxisX(self.axisX)
         self.setAxisY(self.axisY)
 
+        self.ymin = float('inf')
+        self.ymax = float('-inf')
+        self.xmin = float('inf')
+        self.xmax = float('-inf')
+
     def add_xyseries(self, type=QLineSeries):
         series = type()
+        series.setUseOpenGL(True)
         self.addSeries(series)
         series.attachAxis(self.axisX)
         series.attachAxis(self.axisY)
@@ -49,32 +55,35 @@ class WindowChart(QChart):
         self.axisX.setRange(xmin, xmax)
 
 
-def create_windowchart(xobservable, yobservable):
+def create_windowchart(xobservable, yobservable, live_autoscale=False):
     chart = WindowChart()
     series = chart.add_xyseries()
     view = QChartView(chart)
 
     def update(tpl):
         # series.clear()
-        ymin = float('inf')
-        ymax = float('-inf')
-        xmin = float('inf')
-        xmax = float('-inf')
         array = []
+
+        if live_autoscale:
+            chart.ymin = float('inf')
+            chart.ymax = float('-inf')
+            chart.xmin = float('inf')
+            chart.xmax = float('-inf')
+
         for i in range(len(tpl[0])):
             x = tpl[0][i]
             y = tpl[1][i]
             array.append(QPointF(x, y))
-            if y < ymin:
-                ymin = y
-            if y > ymax:
-                ymax = y
-            if x < xmin:
-                xmin = x
-            if x > xmax:
-                xmax = x
-        chart.set_xrange(xmin, xmax)
-        chart.set_yrange(ymin, ymax)
+            if y < chart.ymin:
+                chart.ymin = y
+            if y > chart.ymax:
+                chart.ymax = y
+            if x < chart.xmin:
+                chart.xmin = x
+            if x > chart.xmax:
+                chart.xmax = x
+        chart.set_xrange(chart.xmin, chart.xmax)
+        chart.set_yrange(chart.ymin, chart.ymax)
         series.replace(array)
         # chart.update()
 

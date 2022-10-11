@@ -15,11 +15,8 @@ y2 = x + (g2 - x) * delta
 y3 = x + (g3 - x) * delta
 y4 = x + (g4 - x) * delta
 
+cond = t.map(lambda t: int(t // 1) % 4)
+y = rxchoose(cond, y1, y2, y3, y4)
+x.bind(y)
 
-def choose(t, *sigs):
-    pass
-
-
-y = t.zip(y1, y2, y3, y4).map(choose)
-
-rxsignal.flowchart.flowplot_application(t, x)
+rxsignal.flowchart.flowplot_application(t, cond, x)

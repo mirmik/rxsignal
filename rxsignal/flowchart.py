@@ -1,4 +1,5 @@
 
+from time import time
 from PyQt5.QtChart import (
     QChart, QChartView, QValueAxis, QCategoryAxis,
     QLineSeries, QSplineSeries)
@@ -11,6 +12,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
 import reactivex
 import rxsignal
+import time
 
 
 class FlowSeries:
@@ -88,6 +90,7 @@ class FlowChart(QChart):
     def __init__(self, yautoscale=True):
         super().__init__()
         self.series_list = []
+        self.last_timestamp = time.time()
 
         self.ymin = 0
         self.ymax = 0
@@ -135,7 +138,6 @@ class FlowChart(QChart):
                 xmin = r[0]
             if xmax is None or xmax < r[1]:
                 xmax = r[1]
-        self.axisX.setRange(xmin, xmax)
 
         if self.yautoscale:
             for s in self.series_list:
@@ -145,10 +147,14 @@ class FlowChart(QChart):
                 if ymax is None or ymax < r[1]:
                     ymax = r[1]
 
-            self.axisY.setRange(ymin, ymax)
+        #timestamp = time.time()
 
+        # if timestamp - self.last_timestamp > 0.1:
         for s in self.series_list:
+            self.axisX.setRange(xmin, xmax)
+            self.axisY.setRange(ymin, ymax)
             s.replace()
+        #self.last_timestamp = timestamp
 
 
 def create_flowchart(xobservable,
