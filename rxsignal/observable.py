@@ -139,6 +139,7 @@ class Subject(Observable):
 
     def bind(self, observer):
         self.subscription = observer.subscribe(lambda x: self.on_next(x))
+        return self
 
     def unbind(self):
         self.subscription.dispose()

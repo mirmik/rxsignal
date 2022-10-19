@@ -14,13 +14,14 @@ def aperiodic_filter(signal, timeconst, delta, init=0):
     state = FeedbackSubject(init)
     error = signal - state
     newstate = (state + error * delta / timeconst)
-    return state.loop(newstate)
-
+    state.bind(newstate)
+    return state
 
 def rxintegral(signal, delta, init=0):
     state = FeedbackSubject(init)
     newstate = (state + signal * delta)
-    return state.loop(newstate)
+    state.bind(newstate)
+    return state
 
 
 def svd_backpack(target, signals, f=1):
