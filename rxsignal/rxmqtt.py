@@ -11,12 +11,13 @@ class mqtt_rxclient:
         self.ip = ip
         self.port = port
         self.client_id = client_id
-        self.client = self.connect_mqtt(ip, port)
+        if self.client_id is None:
+            self.client_id = f'client_{time.time()}'
+
+        self.client = self.connect_mqtt(self.ip, self.port, self.client_id)
         self.client.on_message = self.on_message
         self.handlers = {}
         self.all_subjects = []
-        if client_id is None:
-            client_id = f'client_{time.time()}'
 
     def start_spin(self):
         thr = threading.Thread(target=self.client.loop_forever)
@@ -34,16 +35,16 @@ class mqtt_rxclient:
         except Exception as e:
             pass
 
-    def connect_mqtt(self, ip, port):
+    def connect_mqtt(self, ip, port, client_id):
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
                 print("Connected to MQTT Broker!")
             else:
                 print("Failed to connect, return code %d\n", rc)
 
-        client = mqtt_client.Client(self.client_id)
+        client = mqtt_client.Client(client_id)
         client.on_connect = on_connect
-        client.connect(self.ip, self.port)
+        client.connect(ip, port)
         return client
 
     def on_message(self, client, userdata, msg):
