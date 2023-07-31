@@ -4,7 +4,7 @@ import reactivex
 import reactivex.subject
 import time
 from .observable import Subject
-
+import pickle
 
 class mqtt_rxclient:
     def __init__(self, ip='127.0.0.1', port=1883, client_id=None):
@@ -23,6 +23,9 @@ class mqtt_rxclient:
         thr = threading.Thread(target=self.client.loop_forever)
         thr.start()
         self.loop_thread = thr
+
+    def spin(self):
+        self.client.loop_forever()
 
     def stop_spin(self):
         for s in self.all_subjects:
@@ -48,8 +51,9 @@ class mqtt_rxclient:
         return client
 
     def on_message(self, client, userdata, msg):
+        data = pickle.loads(msg.payload)
         for handler in self.handlers[msg.topic]:
-            handler(msg.payload.decode())
+            handler(data)
 
     def subscribe(self, topic, func):
         self.client.subscribe(topic)
@@ -59,7 +63,7 @@ class mqtt_rxclient:
             self.handlers[topic] = [func]
 
     def publish(self, theme, msg):
-        self.client.publish(theme, msg)
+        self.client.publish(theme, pickle.dumps(msg))
 
     def rxsubscribe(self, theme):
         # it must be a PublishSubject. But library does not have it.
